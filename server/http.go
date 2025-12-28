@@ -6,34 +6,40 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"time"
 )
 
 func HTTP(
 	ctx context.Context,
 	port int,
 	handler http.Handler,
-	logger *slog.Logger,
+	log *slog.Logger,
+	ln net.Listener,
+	idleTimeout time.Duration,
 ) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	srv := &http.Server{
 		Handler:     handler,
-		BaseContext: func(_ net.Listener) context.Context { return ctx },
-		ErrorLog:    slog.NewLogLogger(logger.Handler(), slog.LevelError),
-	}
+		BaseContext: func(ln net.Listener) context.Context { return ctx },
 
-	ln, err := listen(port)
-	if err != nil {
-		return fmt.Errorf("failed to listen on port %d: %w", port, err)
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      0, // MUST be 0 for streaming
+		IdleTimeout:       0,
+		ConnState:         idleTracker(ctx, cancel, idleTimeout),
+
+		ErrorLog: slog.NewLogLogger(log.Handler(), slog.LevelError),
 	}
+	defer srv.Close()
 
 	go func() {
-		logger.Info("HTTP server listening",
+		log.Info("HTTP server listening",
 			slog.Int("port", port),
 		)
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			logger.Error("HTTP server failed",
+			log.Error("HTTP server failed",
 				"error", err,
 			)
 			cancel()
@@ -41,6 +47,17 @@ func HTTP(
 	}()
 
 	<-ctx.Done()
-	shutdownServer(context.Background(), srv, logger)
+
+	log.Warn("shutting down server")
+
+	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("graceful shutdown failed: %w", err)
+	}
+
+	log.Warn("server successfully shut down")
+
 	return nil
 }

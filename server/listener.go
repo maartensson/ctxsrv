@@ -8,7 +8,7 @@ import (
 	"github.com/coreos/go-systemd/v22/activation"
 )
 
-func listen(port int) (net.Listener, error) {
+func ActivationListener(port int, fallbackTCP bool) (net.Listener, error) {
 	lis, err := activation.Listeners()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get systemd socket listeners: %w", err)
@@ -20,15 +20,15 @@ func listen(port int) (net.Listener, error) {
 		}
 	}
 
-	ln, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4zero, Port: port})
-	if err != nil {
-		return nil, fmt.Errorf("failed to listen on port %d: %w", port, err)
+	if fallbackTCP {
+		return ListenTCP(port)
 	}
-	return ln, nil
+
+	return nil, fmt.Errorf("no socket listeners available for port: %d", port)
 }
 
-func listenTLS(port int, tlsConfig *tls.Config) (net.Listener, error) {
-	ln, err := listen(port)
+func ActivationListenerTLS(port int, tlsConfig *tls.Config, fallbackTCP bool) (net.Listener, error) {
+	ln, err := ActivationListener(port, fallbackTCP)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get systemd socket listeners: %w", err)
 	}
@@ -38,4 +38,12 @@ func listenTLS(port int, tlsConfig *tls.Config) (net.Listener, error) {
 	}
 
 	return tls.NewListener(ln, tlsConfig), nil
+}
+
+func ListenTCP(port int) (net.Listener, error) {
+	ln, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4zero, Port: port})
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen on port %d: %w", port, err)
+	}
+	return ln, nil
 }
