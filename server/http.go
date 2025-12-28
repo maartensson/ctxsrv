@@ -11,37 +11,34 @@ import (
 
 func HTTP(
 	ctx context.Context,
+	cancel context.CancelFunc,
 	handler http.Handler,
 	log *slog.Logger,
 	ln net.Listener,
 	idleTimeout time.Duration,
+	connContext func(ctx context.Context, c net.Conn) context.Context,
 ) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	srv := &http.Server{
-		Handler:     handler,
-		BaseContext: func(ln net.Listener) context.Context { return ctx },
-
+		Handler:           handler,
+		BaseContext:       func(ln net.Listener) context.Context { return ctx },
+		ConnContext:       connContext,
 		ReadTimeout:       15 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      0, // MUST be 0 for streaming
 		IdleTimeout:       0,
 		ConnState:         idleTracker(ctx, cancel, idleTimeout),
-
-		ErrorLog: slog.NewLogLogger(log.Handler(), slog.LevelError),
+		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelError),
 	}
 	defer srv.Close()
 
 	go func() {
-		log.Info("HTTP server listening",
-			slog.String("addr", ln.Addr().String()),
-		)
+		defer cancel()
+
+		log.Info("HTTP server listening", "addr", ln.Addr().String())
+
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			log.Error("HTTP server failed",
-				"error", err,
-			)
-			cancel()
+			log.Error("HTTP server failed", "error", err)
 		}
 	}()
 
@@ -49,8 +46,8 @@ func HTTP(
 
 	log.Warn("shutting down server")
 
-	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	shutdownCtx, shutDownCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer shutDownCancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("graceful shutdown failed: %w", err)

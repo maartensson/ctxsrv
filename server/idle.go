@@ -21,6 +21,7 @@ func idleTracker(
 	go func() {
 		ticker := time.NewTicker(max(timeout/10, time.Second))
 		defer ticker.Stop()
+		defer cancel()
 
 		for {
 			select {
@@ -30,7 +31,6 @@ func idleTracker(
 				if activeConns.Load() == 0 {
 					last := time.Unix(0, lastActivity.Load())
 					if time.Since(last) >= timeout {
-						cancel()
 						return
 					}
 				}
