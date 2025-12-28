@@ -11,7 +11,6 @@ import (
 
 func HTTP(
 	ctx context.Context,
-	port int,
 	handler http.Handler,
 	log *slog.Logger,
 	ln net.Listener,
@@ -36,7 +35,7 @@ func HTTP(
 
 	go func() {
 		log.Info("HTTP server listening",
-			slog.Int("port", port),
+			slog.String("addr", ln.Addr().String()),
 		)
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			log.Error("HTTP server failed",
