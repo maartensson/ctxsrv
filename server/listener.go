@@ -1,4 +1,4 @@
-package ctxsrv
+package server
 
 import (
 	"crypto/tls"
