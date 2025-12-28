@@ -24,8 +24,8 @@ func HTTP(
 		ErrorLog:    slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
-	// Listen on TCP port 80
-	ln, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4zero, Port: port})
+	// Listen on TCP port
+	ln, err := listen(port)
 	if err != nil {
 		return fmt.Errorf("failed to listen on port %d: %w", port, err)
 	}

@@ -29,13 +29,12 @@ func HTTPS(
 		WriteTimeout:      0, // MUST be 0 for streaming
 		IdleTimeout:       0,
 
-		TLSConfig: tlsConfig,
-		ErrorLog:  slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
-	ln, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4zero, Port: port})
+	ln, err := listenTLS(port, tlsConfig)
 	if err != nil {
-		return fmt.Errorf("failed to listen on port 443: %w", err)
+		return fmt.Errorf("failed to listen on port %d: %w", port, err)
 	}
 
 	go func() {
@@ -45,7 +44,7 @@ func HTTPS(
 			"port", port,
 		)
 
-		if err := srv.ServeTLS(ln, "", ""); err != nil && err != http.ErrServerClosed {
+		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			logger.Error("HTTPS server failed",
 				"error",
 				err,
