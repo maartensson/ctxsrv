@@ -16,23 +16,24 @@ func idleTracker(
 	var activeConns atomic.Int64
 	var lastActivity atomic.Int64
 
-	lastActivity.Store(time.Now().UnixNano())
+	lastActivity.Store(time.Now().Unix())
 
 	go func() {
 		ticker := time.NewTicker(max(timeout/10, time.Second))
 		defer ticker.Stop()
-		defer cancel()
 
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if activeConns.Load() == 0 {
-					last := time.Unix(0, lastActivity.Load())
-					if time.Since(last) >= timeout {
+				last := time.Unix(lastActivity.Load(), 0)
+				if time.Since(last) >= timeout {
+					if activeConns.Load() == 0 {
+						cancel()
 						return
 					}
+					activeConns.Store(0)
 				}
 			}
 		}
