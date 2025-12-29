@@ -44,7 +44,7 @@ func idleTracker(
 		case http.StateNew:
 			activeConns.Add(1)
 		case http.StateClosed, http.StateHijacked:
-			lastActivity.Store(time.Now().UnixNano())
+			lastActivity.Store(time.Now().Unix())
 			activeConns.Add(-1)
 		}
 	}
