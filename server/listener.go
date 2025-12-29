@@ -16,6 +16,25 @@ func ListenTCP(port int) (net.Listener, error) {
 	return ln, nil
 }
 
+func AllListeners() (map[int]net.Listener, error) {
+	out := make(map[int]net.Listener)
+
+	lis, err := activation.Listeners()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get systemd socket listeners: %w", err)
+	}
+
+	for _, l := range lis {
+		tcpAddr, ok := l.Addr().(*net.TCPAddr)
+		if !ok {
+			continue
+		}
+		out[tcpAddr.Port] = l
+	}
+
+	return out, nil
+}
+
 func ActivationListener(opts ...ListenerOption) (net.Listener, error) {
 	cfg := defaultListenerConfig()
 	for _, opt := range opts {
