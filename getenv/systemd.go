@@ -6,41 +6,45 @@ import (
 )
 
 func ConfigDirectory() (string, error) {
-	dir := os.Getenv("CONFIGURATION_DIRECTORY")
-	if dir != "" {
-		return dir, nil
-	}
-	return "", fmt.Errorf("could not find CONFIGURATION_DIRECTORY")
+	return directoryFromEnv("CONFIGURATION_DIRECTORY")
 }
 
 func StateDirectory() (string, error) {
-	dir := os.Getenv("STATE_DIRECTORY")
-	if dir != "" {
-		return dir, nil
-	}
-	return "", fmt.Errorf("could not find STATE_DIRECTORY")
+	return directoryFromEnv("STATE_DIRECTORY")
 }
 
 func RuntimeDirectory() (string, error) {
-	dir := os.Getenv("RUNTIME_DIRECTORY")
-	if dir != "" {
-		return dir, nil
-	}
-	return "", fmt.Errorf("could not find RUNTIME_DIRECTORY")
+	return directoryFromEnv("RUNTIME_DIRECTORY")
 }
 
 func CacheDirectory() (string, error) {
-	dir := os.Getenv("CACHE_DIRECTORY")
-	if dir != "" {
-		return dir, nil
-	}
-	return "", fmt.Errorf("could not find CACHE_DIRECTORY")
+	return directoryFromEnv("CACHE_DIRECTORY")
 }
 
 func LogsDirectory() (string, error) {
-	dir := os.Getenv("LOGS_DIRECTORY")
+	return directoryFromEnv("LOGS_DIRECTORY")
+}
+
+func directoryFromEnv(name string) (string, error) {
+	dir := os.Getenv(name)
 	if dir != "" {
+		if err := validDir(dir); err != nil {
+			return "", fmt.Errorf("invalid dir: :w", err)
+		}
 		return dir, nil
 	}
-	return "", fmt.Errorf("could not find LOGS_DIRECTORY")
+	return "", fmt.Errorf("missing %s", name)
+}
+
+func validDir(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("cannot stat dir %s: %w", path, err)
+	}
+
+	if !info.IsDir() {
+		return fmt.Errorf("%s is a a file not a dir", path)
+	}
+
+	return nil
 }
