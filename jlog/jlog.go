@@ -85,15 +85,17 @@ func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	out := maps.Clone(h.attrs)
 	flattenAttrs(h.prefix, out, attrs...)
 	return &handler{
-		attrs:  out,
-		prefix: h.prefix,
+		attrs:   out,
+		prefix:  h.prefix,
+		options: h.options,
 	}
 }
 
 func (h *handler) WithGroup(name string) slog.Handler {
 	return &handler{
-		attrs:  maps.Clone(h.attrs),
-		prefix: addPrefix(h.prefix, name),
+		attrs:   maps.Clone(h.attrs),
+		prefix:  addPrefix(h.prefix, name),
+		options: h.options,
 	}
 }
 
