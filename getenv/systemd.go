@@ -29,7 +29,7 @@ func directoryFromEnv(name string) (string, error) {
 	dir := os.Getenv(name)
 	if dir != "" {
 		if err := validDir(dir); err != nil {
-			return "", fmt.Errorf("invalid dir: :w", err)
+			return "", fmt.Errorf("invalid dir: %w", err)
 		}
 		return dir, nil
 	}
